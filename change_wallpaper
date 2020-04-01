@@ -1,0 +1,97 @@
+source key.sh
+function get_background(){
+  if [[ `wget -S --spider $1  2>&1 | grep 'HTTP/1.1 200 OK'` ]]; then
+    echo "image is available";
+    wget -O $2 $1
+  fi
+}
+
+PRG="$BASH_SOURCE"
+progname=`basename "$BASH_SOURCE"`
+while [ -h "$PRG" ] ; do
+    ls=`ls -ld "$PRG"`
+    link=`expr "$ls" : '.*-> \(.*\)$'`
+    if expr "$link" : '/.*' > /dev/null; then
+        PRG="$link"
+    else
+        PRG=`dirname "$PRG"`"/$link"
+    fi
+done
+dir=$(dirname "$PRG")
+
+
+function getJson() {
+
+    code=($(curl -o /dev/null -s -w "%{http_code}\n" $1))
+    echo $code; # HTTP response code
+    echo $2;
+    if [[ $code -eq 200 ]];then
+            size=$2;
+            if test -z "$size"
+                then
+                    size="full";
+                elif [ "$size" != "raw" ] || [ "$size" != "full" ] || [ "$size" != "regular" ] || [ "$size" != "small" ] || [ "$size" != "thumb" ]; then
+                    size="regular";
+                else
+                   echo "not empty";
+            fi
+
+            wget -O x.json $1
+            total=($(jq -r '.total' x.json))
+            total_pages=($(jq -r '.total_pages' x.json))
+
+            TOTAL1=${total[@]}
+            TOTALP=${total_pages[@]}
+
+            FLOOR=0;
+            CEILING=$(($TOTAL1/$TOTALP));
+            RANGE=$(($CEILING-$FLOOR+1));
+            RESULT=$RANDOM;
+            let "RESULT %= $RANGE";
+            RESULT=$(($RESULT+$FLOOR));
+
+            url=($(jq -r '.results['$RESULT'].urls.'$size'' x.json))
+            echo ${url[@]};
+            
+
+            BG_DIR=$dir/wallpapers;
+            BG_FILE_NAME=${RESULT}.jpg;
+            BG_PATH=$BG_DIR/$BG_FILE_NAME;
+
+            if [ ! -d "$BG_DIR" ]; then
+                echo "wallpaper path doesnt exist, creating it ..."
+                mkdir $BG_DIR;
+            fi
+            if test -f "$BG_PATH"; then
+                echo "renaming the wallpaper ..."
+                BG_FILE_NAME=$RANDOM.jpg;
+            fi
+
+            echo "path:" $BG_DIR;
+            echo "file:" $BG_FILE_NAME;
+            
+            get_background ${url[@]} $BG_PATH
+
+            osascript -e 'tell application "Finder" to set desktop picture to POSIX file "'$BG_PATH'"'
+            killall Dock;
+        else
+            echo "Impossible to perform the request ...";
+    fi
+}
+
+function change_wallpaper() {
+    theme=$1; # keyword for the wallpaper (nature, cars, etc...)
+    size=$2; # raw, full, regular, small, thumb
+    if test -z "$theme";then
+        theme="plane";
+    fi
+    echo "theme:" $theme;
+        apiEndPoint="https://api.unsplash.com/search/photos/?query="$theme"&client_id=$UNSPLASH_API_KEY&orientation=landscape";
+        #echo $apiEndPoint;
+        getJson $apiEndPoint $2;
+
+}
+
+change_wallpaper
+
+exit
