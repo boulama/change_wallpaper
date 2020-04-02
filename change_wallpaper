@@ -54,7 +54,7 @@ function getJson() {
             echo ${url[@]};
             
 
-            BG_DIR=$dir/wallpapers;
+            BG_DIR=$PWD/wallpapers;
             BG_FILE_NAME=${RESULT}.jpg;
             BG_PATH=$BG_DIR/$BG_FILE_NAME;
 
@@ -71,9 +71,8 @@ function getJson() {
             echo "file:" $BG_FILE_NAME;
             
             get_background ${url[@]} $BG_PATH
-
-            osascript -e 'tell application "Finder" to set desktop picture to POSIX file "'$BG_PATH'"'
-            killall Dock;
+            osascript -e "tell application \"Finder\" to set desktop picture to POSIX file \"$BG_PATH\""
+            #killall Dock;
         else
             echo "Impossible to perform the request ...";
     fi
